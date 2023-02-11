@@ -1,0 +1,8 @@
+.IPPcode23
+
+#line comment 1
+MOVE xd xd #inline comment 2
+
+# line comment 3
+
+foo bar bar1 bar2
