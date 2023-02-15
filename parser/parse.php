@@ -15,8 +15,13 @@ $instructions = array(
         "DPRINT", "BREAK"
 );
 
+$stringRegex;
+$intRegex;
+$boolRegex;
+
+
 $instructions = array(
-        "MOVE",
+        "MOVE" => [],
         "CREATEFRAME",
         "PUSHFRAME",
         "POPFRAME",
@@ -25,19 +30,32 @@ $instructions = array(
         "RETURN",
         "PUSHS",
         "POPS",
-
-        "ADD", "SUB", "MUL", "IDIV", "LT", "GT", "EQ", "AND", "OR", "NOT", "INT2CHAR", "STRI2INT",
-        "READ", "WRITE",
-        "CONCAT", "STRLEN", "GETCHAR", "SETCHAR",
+        "ADD",
+        "SUB",
+        "MUL",
+        "IDIV",
+        "LT",
+        "GT",
+        "EQ",
+        "AND",
+        "OR",
+        "NOT",
+        "INT2CHAR",
+        "STRI2INT",
+        "READ",
+        "WRITE",
+        "CONCAT",
+        "STRLEN",
+        "GETCHAR",
+        "SETCHAR",
         "TYPE",
-        "LABEL", "JUMP", "JUMPIFEQ", "JUMPIFNEQ", "EXIT",
-        "DPRINT", "BREAK"
-
-
-
-
-
-
+        "LABEL",
+        "JUMP",
+        "JUMPIFEQ",
+        "JUMPIFNEQ",
+        "EXIT",
+        "DPRINT",
+        "BREAK"
 );
 
 $commentRegex = "/\s#.*/";
@@ -266,7 +284,7 @@ foreach ($noBlankLines as $line) {
                 $arguments = $parser->getArgumentsFromLine($line);
 
                 if (!in_array($instruction, $instructions)) {
-                        fwrite("chybne zapsany nebo neznamy operacni kod");
+                        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
                         exit(22);
                 }
 
