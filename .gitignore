@@ -1,1 +1,5 @@
 output.xml
+tests
+jexamxml.jar
+options
+*.zip
