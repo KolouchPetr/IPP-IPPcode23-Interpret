@@ -2,60 +2,56 @@
 <?php
 ini_set('display_errors', 'stderr');
 
-$XMLHEADER = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
+$XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
 $XMLPROGRAMSTART = "<program language=\"IPPcode23\">";
 
-$instructions = array(
-        "MOVE", "CREATEFRAME", "PUSHFRAME", "POPFRAME", "DEFVAR", "CALL", "RETURN", "PUSHS", "POPS",
-        "ADD", "SUB", "MUL", "IDIV", "LT", "GT", "EQ", "AND", "OR", "NOT", "INT2CHAR", "STRI2INT",
-        "READ", "WRITE",
-        "CONCAT", "STRLEN", "GETCHAR", "SETCHAR",
-        "TYPE",
-        "LABEL", "JUMP", "JUMPIFEQ", "JUMPIFNEQ", "EXIT",
-        "DPRINT", "BREAK"
-);
-
-$stringRegex;
-$intRegex;
-$boolRegex;
+#$instructions = array(
+#        "MOVE", "CREATEFRAME", "PUSHFRAME", "POPFRAME", "DEFVAR", "CALL", "RETURN", "PUSHS", "POPS",
+#        "ADD", "SUB", "MUL", "IDIV", "LT", "GT", "EQ", "AND", "OR", "NOT", "INT2CHAR", "STRI2INT",
+#        "READ", "WRITE",
+#        "CONCAT", "STRLEN", "GETCHAR", "SETCHAR",
+#        "TYPE",
+#        "LABEL", "JUMP", "JUMPIFEQ", "JUMPIFNEQ", "EXIT",
+#        "DPRINT", "BREAK"
+#);
 
 
 $instructions = array(
-        "MOVE" => [],
-        "CREATEFRAME",
-        "PUSHFRAME",
-        "POPFRAME",
-        "DEFVAR",
-        "CALL",
-        "RETURN",
-        "PUSHS",
-        "POPS",
-        "ADD",
-        "SUB",
-        "MUL",
-        "IDIV",
-        "LT",
-        "GT",
-        "EQ",
-        "AND",
-        "OR",
-        "NOT",
-        "INT2CHAR",
-        "STRI2INT",
-        "READ",
-        "WRITE",
-        "CONCAT",
-        "STRLEN",
-        "GETCHAR",
-        "SETCHAR",
-        "TYPE",
-        "LABEL",
-        "JUMP",
-        "JUMPIFEQ",
-        "JUMPIFNEQ",
-        "EXIT",
-        "DPRINT",
-        "BREAK"
+        "MOVE" => ["var", "symb"],
+        "CREATEFRAME" => [],
+        "PUSHFRAME" => [],
+        "POPFRAME" => [],
+        "DEFVAR" => ["var"],
+        "CALL" => ["label"],
+        "RETURN" => [],
+        "PUSHS" => ["symb"],
+        "POPS" => ["var"],
+        "ADD" => ["var", "symb", "symb"],
+        "SUB" => ["var", "symb", "symb"],
+        "MUL" => ["var", "symb", "symb"],
+        "IDIV" => ["var", "symb", "symb"],
+        "LT" => ["var", "symb", "symb"],
+        "GT" => ["var", "symb", "symb"],
+        "EQ" => ["var", "symb", "symb"],
+        "AND" => ["var", "symb", "symb"],
+        "OR" => ["var", "symb", "symb"],
+        "NOT" => ["var", "symb", "symb"],
+        "INT2CHAR" => ["var", "symb"],
+        "STRI2INT" => ["var", "symb", "symb"],
+        "READ" => ["var", "type"],
+        "WRITE" => ["symb"],
+        "CONCAT" => ["var", "symb", "symb"],
+        "STRLEN" => ["var", "symb"],
+        "GETCHAR" => ["var", "symb", "symb"],
+        "SETCHAR" => ["var", "symb", "symb"],
+        "TYPE" => ["var", "symb"],
+        "LABEL" => ["label"],
+        "JUMP" => ["label"],
+        "JUMPIFEQ" => ["label", "symb", "symb"],
+        "JUMPIFNEQ" => ["label", "symb", "symb"],
+        "EXIT" => ["symb"],
+        "DPRINT" => ["symb"],
+        "BREAK" => []
 );
 
 $commentRegex = "/\s#.*/";
@@ -148,6 +144,7 @@ class Parser
                                 break;
                         case "type":
                                 #TODO:
+                                $argument = new Argument("type", $parts[1]);
                                 break;
                         default:
                                 $argument = new Argument("label", $parts[0]);
@@ -232,16 +229,39 @@ class XML
 #
 #
 
-/*
 class SyntaxAnalysis {
+  function checkInstructionArgumentTypes($instruction, $arguments) {
+    global $instructions;
+    for($i = 0; $i < count($instructions[$instruction]); $i++) {
+            if(!$this->checkType($arguments[$i], $instructions[$instruction][$i])) {
+              fwrite(STDERR, "chybny typ argumentu u argumentu " . $instruction . "u argumentu " . $arguments[$i]);
+              exit(23);
+            }
+          }
+        }
 
+  function checkType($argument, $type) {
+          switch($type) {
+            case "var":
+              return preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument);
+              break;
+            case "symb":
+              return (preg_match("/^int[@][+-]?\d+$/", $argument) ||
+                preg_match("/(true|false)/", $argument)      ||
+                preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))+/", $argument) || !strcmp("string@", $argument) || 
+                
+                preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument));
+              break;
+            case "label":
+              return preg_match("/^[a-zA-Z_\-\$&%\*\!?][\w\-\$&%\*\!?]*$/", $argument);
+              break;
+            case "type":
+              return preg_match("/(int|bool|string|nil)/", $argument);
+              break;
+          }
+        }
 }
 
-class SemanticAnalysis {
-
-}
-
-*/
 
 function printHelp()
 {
@@ -262,6 +282,7 @@ if ($argc == 2) {
 
 $parser = new Parser();
 $xml = new XML();
+$SyntaxAnalysis = new SyntaxAnalysis();
 $input_data = $parser->readSTDIN();
 $lines = explode("\n", $input_data);
 
@@ -283,10 +304,21 @@ foreach ($noBlankLines as $line) {
                 $instruction = $parser->getInstructionFromLine($line);
                 $arguments = $parser->getArgumentsFromLine($line);
 
-                if (!in_array($instruction, $instructions)) {
-                        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
-                        exit(22);
-                }
+
+                #fixme nil values
+                #if (!in_array($instruction, $instructions)) {
+                #        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
+                #        exit(22);
+                #}
+
+                #if(count($instructions[$instruction] != count($arguments))) {
+                #        fwrite(STDERR, "nespravny pocet argumentu");
+                #        exit(23);
+                #}
+
+                $SyntaxAnalysis->checkInstructionArgumentTypes($instruction, $arguments);
+
+
 
                 switch ($instruction) {
                         case "CREATEFRAME":
