@@ -126,9 +126,6 @@ class Parser
                                 $argument = new Argument("bool", $parts[1]);
                                 break;
                         case "string":
-                                if (!$parts[1]) {
-                                        $argument = new Argument("string", "");
-                                } else {
                                         $i = 1;
                                         $string = "";
                                         while (isset($parts[$i])) {
@@ -136,7 +133,6 @@ class Parser
                                                 $i++;
                                         }
                                         $argument = new Argument("string", $string);
-                                }
                                 break;
                         case "nil":
                                 #FIXME: nil values
@@ -205,7 +201,10 @@ class XML
                 #$this->endTag("opcode");
                 $argCount = 1;
                 foreach ($args as $arg) {
-                        if ($arg->type != "" && $arg->value != "") {
+                  if($arg->type != "string" && $arg->value == "") {
+                    continue;
+                  }
+                  elseif ($arg->type != "") {
                                 $tagName = "arg" . $argCount;
                                 $type = "type=\"" . $arg->type . "\"";
                                 $this->createTag($tagName, [$type], $arg->value);
@@ -249,7 +248,7 @@ class SyntaxAnalysis {
               return (preg_match("/^int[@][+-]?\d+$/", $argument) ||
                 preg_match("/(true|false)/", $argument)      ||
                 preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))+/", $argument) || !strcmp("string@", $argument) || 
-                
+                !strcmp("nil@nil", $argument) ||
                 preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument));
               break;
             case "label":
@@ -336,6 +335,11 @@ foreach ($noBlankLines as $line) {
                                 break;
                                 #case "JUMPIFEQ":
                                 #case "JUMPIFNEQ":
+                        case "READ":
+                          $argument = new Argument("var", $arguments[0]);
+                          $argument1 = new Argument("type", $arguments[1]);
+                          $xml->createInstruction($lineNumber, [$argument, $argument1]);
+                          break;
 
 
                         default:
@@ -353,7 +357,6 @@ foreach ($noBlankLines as $line) {
 }
 $xml->endTag("program");
 exit(0);
-
 
 
 
