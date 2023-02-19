@@ -231,13 +231,21 @@ class XML
 class SyntaxAnalysis {
   function checkInstructionArgumentTypes($instruction, $arguments) {
     global $instructions;
+    if($instruction == "NOT" && count($arguments) == 2) {
+      if(!$this->checkType($arguments[0], "var") || !$this->checkType($arguments[1], "symb")) {
+        fwrite(STDERR, "chybny typ argumenty u argumentu ") . $instruction;
+        exit(23);
+      }
+
+    } else{
     for($i = 0; $i < count($instructions[$instruction]); $i++) {
             if(!$this->checkType($arguments[$i], $instructions[$instruction][$i])) {
-              fwrite(STDERR, "chybny typ argumentu u argumentu " . $instruction . "u argumentu " . $arguments[$i]);
+              fwrite(STDERR, "chybny typ argumentu u argumentu " . $instruction . " u argumentu " . $arguments[$i]);
               exit(23);
             }
           }
-        }
+    }
+  }
 
   function checkType($argument, $type) {
           switch($type) {
@@ -297,7 +305,8 @@ $lineNumber = 0;
 echo $XMLHEADER . "\n";
 echo $XMLPROGRAMSTART . "\n";
 foreach ($noBlankLines as $line) {
-        if ($lineNumber == 0) {
+  if ($lineNumber == 0) {
+    $line = str_replace(' ', '', $line);
                 $parser->checkHeader($line);
         } else {
           $instruction = $parser->getInstructionFromLine($line);
@@ -314,10 +323,17 @@ foreach ($noBlankLines as $line) {
                         exit(22);
                 }
 
-                if(count($instructions[$instruction]) != count($arguments)) {
+          if($instruction != "NOT"){
+          if(count($instructions[$instruction]) != count($arguments)) {
                         fwrite(STDERR, "nespravny pocet argumentu");
                         exit(23);
-                }
+          }
+          } else {
+            if((count($instructions[$instruction]) != count($arguments)) && (count($arguments) != 2)) {
+                      fwrite(STDERR, "nespravny pocet argumentu");
+                      exit(23);
+            }
+          }
 
                 $SyntaxAnalysis->checkInstructionArgumentTypes($instruction, $arguments);
 
@@ -342,7 +358,7 @@ foreach ($noBlankLines as $line) {
                         case "READ":
                           $argument = new Argument("var", $arguments[0]);
                           $argument1 = new Argument("type", $arguments[1]);
-                          $xml->createInstruction($lineNumber, [$argument, $argument1]);
+                          $xml->createInstruction($lineNumber, $instruction, [$argument, $argument1]);
                           break;
 
 
