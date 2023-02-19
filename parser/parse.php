@@ -300,8 +300,12 @@ foreach ($noBlankLines as $line) {
         if ($lineNumber == 0) {
                 $parser->checkHeader($line);
         } else {
-                $instruction = $parser->getInstructionFromLine($line);
-                $arguments = $parser->getArgumentsFromLine($line);
+          $instruction = $parser->getInstructionFromLine($line);
+          $instruction = strtoupper($instruction);
+          $arguments = $parser->getArgumentsFromLine($line);
+          $arguments = array_filter($arguments, function($value) {
+          return !empty(trim($value));
+          });
 
 
                 #fixme nil values
@@ -310,10 +314,10 @@ foreach ($noBlankLines as $line) {
                 #        exit(22);
                 #}
 
-                #if(count($instructions[$instruction] != count($arguments))) {
-                #        fwrite(STDERR, "nespravny pocet argumentu");
-                #        exit(23);
-                #}
+                if(count($instructions[$instruction]) != count($arguments)) {
+                        fwrite(STDERR, "nespravny pocet argumentu");
+                        exit(23);
+                }
 
                 $SyntaxAnalysis->checkInstructionArgumentTypes($instruction, $arguments);
 
