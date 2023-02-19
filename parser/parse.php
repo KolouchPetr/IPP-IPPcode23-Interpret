@@ -5,16 +5,6 @@ ini_set('display_errors', 'stderr');
 $XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
 $XMLPROGRAMSTART = "<program language=\"IPPcode23\">";
 
-#$instructions = array(
-#        "MOVE", "CREATEFRAME", "PUSHFRAME", "POPFRAME", "DEFVAR", "CALL", "RETURN", "PUSHS", "POPS",
-#        "ADD", "SUB", "MUL", "IDIV", "LT", "GT", "EQ", "AND", "OR", "NOT", "INT2CHAR", "STRI2INT",
-#        "READ", "WRITE",
-#        "CONCAT", "STRLEN", "GETCHAR", "SETCHAR",
-#        "TYPE",
-#        "LABEL", "JUMP", "JUMPIFEQ", "JUMPIFNEQ", "EXIT",
-#        "DPRINT", "BREAK"
-#);
-
 
 $instructions = array(
         "MOVE" => ["var", "symb"],
@@ -268,7 +258,7 @@ class SyntaxAnalysis {
               return preg_match("/^[a-zA-Z_\-\$&%\*\!?][\w\-\$&%\*\!?]*$/", $argument);
               break;
             case "type":
-              return preg_match("/(int|bool|string|nil)/", $argument);
+              return preg_match("/^(int|bool|string|nil)$/", $argument);
               break;
           }
         }
