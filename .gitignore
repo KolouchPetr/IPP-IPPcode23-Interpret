@@ -3,3 +3,5 @@ tests
 jexamxml.jar
 options
 *.zip
+/parser/testResult.txt
+/parser/results.txt
