@@ -116,6 +116,7 @@ class Parser
         {
                 $parts = explode("@", $argument);
                 $argType = $parts[0];
+                $parts[1] = htmlspecialchars($parts[1], ENT_XML1);
 
                 switch ($argType) {
                         case "GF":
