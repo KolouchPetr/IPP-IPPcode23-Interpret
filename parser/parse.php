@@ -93,6 +93,10 @@ class Parser
         {
                 $argumentsString = substr(strstr($line, " "), 1);
                 $arguments = explode(" ", $argumentsString);
+                // Remove empty elements
+                $arguments = array_filter($arguments);
+                // Re-index the array starting from 0
+                $arguments = array_values($arguments);
                 if (count($arguments) > 3) {
                         fwrite(STDERR, "Too many arguments at line " . $line . " given!");
                         exit(23);
@@ -311,6 +315,7 @@ foreach ($noBlankLines as $line) {
         } else {
           $instruction = $parser->getInstructionFromLine($line);
           $instruction = strtoupper($instruction);
+          $instruction = str_replace(array(' ', "\t"), '', $instruction);
           $arguments = $parser->getArgumentsFromLine($line);
           $arguments = array_filter($arguments, function($value) {
           return !empty(trim($value));
@@ -318,7 +323,7 @@ foreach ($noBlankLines as $line) {
 
 
                 #fixme nil values
-                if (!array_key_exists($instruction, $instructions)) {
+          if (!array_key_exists($instruction, $instructions)) {
                         fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
                         exit(22);
                 }
