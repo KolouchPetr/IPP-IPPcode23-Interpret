@@ -309,10 +309,10 @@ foreach ($noBlankLines as $line) {
 
 
                 #fixme nil values
-                #if (!in_array($instruction, $instructions)) {
-                #        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
-                #        exit(22);
-                #}
+                if (!array_key_exists($instruction, $instructions)) {
+                        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
+                        exit(22);
+                }
 
                 if(count($instructions[$instruction]) != count($arguments)) {
                         fwrite(STDERR, "nespravny pocet argumentu");
