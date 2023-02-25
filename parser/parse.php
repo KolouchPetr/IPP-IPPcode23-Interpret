@@ -2,10 +2,6 @@
 <?php
 ini_set('display_errors', 'stderr');
 
-$XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-$XMLPROGRAMSTART = "<program language=\"IPPcode23\">";
-
-
 $instructions = array(
         "MOVE" => ["var", "symb"],
         "CREATEFRAME" => [],
@@ -44,33 +40,38 @@ $instructions = array(
         "BREAK" => []
 );
 
-$commentRegex = "/\s#.*/";
-$singleArgumentRegex = "";
-$twoArgumentRegex = "";
-$threeArgumentRegex = "";
-
-enum LineType
-{
-        case singleArg;
-        case doubleArg;
-        case tripleArg;
-}
-
-#TODO:
-#parse escape sequences
-
 class Parser
 {
-
-
         public function readSTDIN()
         {
                 $input_data = file_get_contents("php://stdin");
                 return $input_data;
         }
 
-        public function getType($line)
-        {
+        public function checkArgs() {
+        global $argc, $argv;
+        if ($argc == 2) {
+          if (!strcmp($argv[1], "--help") || !strcmp($argv[1], "-help")) {
+                  printHelp();
+                  exit(0);
+          } else {
+                  echo "použijte -help or --help pro zobrazení nápovědy";
+                  exit(1);
+            }
+          }
+        }
+
+        public function parseInputLines() {
+        
+        $input_data = $this->readSTDIN();
+        $lines = explode("\n", $input_data);
+
+        $linesWithoutComments = array_map(function ($line) {
+          return preg_replace('/#.*/', '', $line);
+        }, $lines);
+
+        $noBlankLines = preg_grep('/^[\s]*$/', $linesWithoutComments, PREG_GREP_INVERT);
+        return $noBlankLines;
         }
 
         public function getInstructionFromLine($line)
@@ -88,7 +89,7 @@ class Parser
                 // Re-index the array starting from 0
                 $arguments = array_values($arguments);
                 if (count($arguments) > 3) {
-                        fwrite(STDERR, "Too many arguments at line " . $line . " given!");
+                        fwrite(STDERR, "řádek " . $line . " obsahuje příliš mnoho argumentů!");
                         exit(23);
                 }
                 return $arguments;
@@ -97,7 +98,7 @@ class Parser
         public function checkHeader($line)
         {
                 if (strcmp(strtolower($line), strtolower(".IPPcode23"))) {
-                        fwrite(STDERR, "Header is either missing or is incorrect");
+                        fwrite(STDERR, "chybějící nebo chybně zadaná hlavička!");
                         exit(21);
                 }
         }
@@ -145,17 +146,6 @@ class Parser
         }
 }
 
-enum ArgumentTypes
-{
-        case int;
-        case bool;
-        case string;
-        case nil;
-        case label;
-        case type;
-        case var;
-}
-
 class Argument
 {
         public $type;
@@ -170,6 +160,14 @@ class Argument
 
 class XML
 {
+       const XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+       const XMLPROGRAMSTART = "<program language=\"IPPcode23\">";
+
+        public function printProgramStart() {
+          echo self::XMLHEADER . "\n";
+          echo self::XMLPROGRAMSTART . "\n";
+        }
+
         public function createTag($tagName, $args, $value)
         {
                 $tag = "<" . $tagName . " ";
@@ -211,46 +209,34 @@ class XML
         }
 }
 
-#TODO:
-#check argument count
-#check argument types
-#check redefinition of variables, labels, ...
-#
-#
-#
-#
-#
-#
-#
-
 class SyntaxAnalysis {
-  function checkInstructionArgumentTypes($instruction, $arguments) {
+  public function checkInstructionArgumentTypes($instruction, $arguments) {
     global $instructions;
     if($instruction == "NOT" && count($arguments) == 2) {
       if(!$this->checkType($arguments[0], "var") || !$this->checkType($arguments[1], "symb")) {
-        fwrite(STDERR, "chybny typ argumenty u argumentu ") . $instruction;
+        fwrite(STDERR, "chybný typ argumentu u argumentu " . $instruction);
         exit(23);
       }
 
     } else{
     for($i = 0; $i < count($instructions[$instruction]); $i++) {
             if(!$this->checkType($arguments[$i], $instructions[$instruction][$i])) {
-              fwrite(STDERR, "chybny typ argumentu u argumentu " . $instruction . " u argumentu " . $arguments[$i]);
+              fwrite(STDERR, "chybný typ argumentu u instrukce " . $instruction . " u argumentu " . $arguments[$i]);
               exit(23);
             }
           }
     }
   }
 
-  function checkType($argument, $type) {
+  public function checkType($argument, $type) {
           switch($type) {
             case "var":
               return preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument);
               break;
             case "symb":
-              return (preg_match("/^int[@][+-]?\d+$/", $argument) ||
+              return (preg_match("/^int[@][+-]?((0x[\da-fA-F]+)|([0-7]+)|(\d+))$/", $argument) ||
                 preg_match("/(true|false)/", $argument)      ||
-                preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))+/", $argument) || !strcmp("string@", $argument) || 
+                preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))*(?:[^\\\\\p{Z}\p{Cc}]|$)/", $argument) || !strcmp("string@", $argument) || 
                 !strcmp("nil@nil", $argument) ||
                 preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument));
               break;
@@ -261,133 +247,112 @@ class SyntaxAnalysis {
               return preg_match("/^(int|bool|string|nil)$/", $argument);
               break;
           }
+  }
+  public function instructionExists($instruction) {
+    global $instructions;
+    if (!array_key_exists($instruction, $instructions)) {
+      fwrite(STDERR, "chybně zapsaný nebo neznámý operační kód");
+      exit(22);
+    }
+  }
+
+  public function checkArgumentCount($instruction, $arguments) {
+    global $instructions;
+    if($instruction != "NOT"){
+     if(count($instructions[$instruction]) != count($arguments)) {
+       fwrite(STDERR, "nesprávný počet argumentů");
+       exit(23);
+      }
+    } else {
+        if((count($instructions[$instruction]) != count($arguments)) && (count($arguments) != 2)) {
+          fwrite(STDERR, "nesprávný počet argumentů");
+          exit(23);
         }
+      }
+    }
 }
 
+class Main {
+  public function printHelp() {
+    echo "  Program parse.php slouží pro vytvoření XML souboru platného IPPcode23 kódu.
+    Zdrojový kód je načítán ze standardního vstupu stdin. 
+    Spusťte program pomocí příkazu php parse.php, napište program do stdin a pomocí <ctrl+d> ukončete vstup
+    nebo přesměrujte obsah souboru s kódem na stdin způsobem: php parse.php < zdroj.IPPcode23";
+  }
 
-function printHelp()
-{
-        echo "TODO: print help";
-}
+  public function Program() {
+    global $instructions;
+    $parser = new Parser();
+    $parser->checkArgs();
+    $xml = new XML();
+    $SyntaxAnalysis = new SyntaxAnalysis();
 
+    $noBlankLines = $parser->parseInputLines();
+    $lineNumber = 0;
 
+    $xml->printProgramStart();
 
-if ($argc == 2) {
-        if (!strcmp($argv[1], "--help") || !strcmp($argv[1], "-help")) {
-                printHelp();
-                exit(0);
-        } else {
-                echo "use -help or --help to print usage";
-                exit(1);
-        }
-}
-
-$parser = new Parser();
-$xml = new XML();
-$SyntaxAnalysis = new SyntaxAnalysis();
-$input_data = $parser->readSTDIN();
-$lines = explode("\n", $input_data);
-
-$linesWithoutComments = array_map(function ($line) {
-        return preg_replace('/#.*/', '', $line);
-}, $lines);
-
-$noBlankLines = preg_grep('/^[\s]*$/', $linesWithoutComments, PREG_GREP_INVERT);
-
-
-$lineNumber = 0;
-
-echo $XMLHEADER . "\n";
-echo $XMLPROGRAMSTART . "\n";
-foreach ($noBlankLines as $line) {
-  if ($lineNumber == 0) {
-    $line = str_replace(' ', '', $line);
-                $parser->checkHeader($line);
-        } else {
-          $instruction = $parser->getInstructionFromLine($line);
-          $instruction = strtoupper($instruction);
-          $instruction = str_replace(array(' ', "\t"), '', $instruction);
-          $arguments = $parser->getArgumentsFromLine($line);
-          $arguments = array_filter($arguments, function($value) {
-          return !empty(trim($value));
-          });
+    foreach ($noBlankLines as $line) {
+      if ($lineNumber == 0) {
+        $line = str_replace(' ', '', $line);
+                    $parser->checkHeader($line);
+            } else {
+              $instruction = $parser->getInstructionFromLine($line);
+              $instruction = strtoupper($instruction);
+              $instruction = str_replace(array(' ', "\t"), '', $instruction);
+              $arguments = $parser->getArgumentsFromLine($line);
+              $arguments = array_filter($arguments, function($value) {
+              return !empty(trim($value));
+              });
 
 
-                #fixme nil values
-          if (!array_key_exists($instruction, $instructions)) {
-                        fwrite(STDERR, "chybne zapsany nebo neznamy operacni kod");
-                        exit(22);
-                }
 
-          if($instruction != "NOT"){
-          if(count($instructions[$instruction]) != count($arguments)) {
-                        fwrite(STDERR, "nespravny pocet argumentu");
-                        exit(23);
-          }
-          } else {
-            if((count($instructions[$instruction]) != count($arguments)) && (count($arguments) != 2)) {
-                      fwrite(STDERR, "nespravny pocet argumentu");
-                      exit(23);
+              $SyntaxAnalysis->instructionExists($instruction);
+              $SyntaxAnalysis->checkArgumentCount($instruction, $arguments);
+              $SyntaxAnalysis->checkInstructionArgumentTypes($instruction, $arguments);
+
+                    switch ($instruction) {
+                            case "CREATEFRAME":
+                            case "PUSHFRAME":
+                            case "POPFRAME":
+                            case "RETURN":
+                            case "BREAK":
+                                    $xml->createInstruction($lineNumber, $instruction, []);
+                                    break;
+
+                            case "LABEL":
+                            case "JUMP":
+                                    $argument = new Argument("label", $arguments[0]);
+                                    $xml->createInstruction($lineNumber, $instruction, [$argument]);
+                                    break;
+                                    #case "JUMPIFEQ":
+                                    #case "JUMPIFNEQ":
+                            case "READ":
+                              $argument = new Argument("var", $arguments[0]);
+                              $argument1 = new Argument("type", $arguments[1]);
+                              $xml->createInstruction($lineNumber, $instruction, [$argument, $argument1]);
+                              break;
+
+
+                            default:
+                                    $argumentList = array();
+                                    foreach ($arguments as $argument) {
+                                            #echo "***creating argument with: " . $argument . " ***\n";
+                                            $currentArgument = $parser->createArgument($argument);
+                                            array_push($argumentList, $currentArgument);
+                                    }
+                                    $xml->createInstruction($lineNumber, $instruction, $argumentList);
+                                    break;
+                    }
             }
-          }
-
-                $SyntaxAnalysis->checkInstructionArgumentTypes($instruction, $arguments);
-
-
-
-                switch ($instruction) {
-                        case "CREATEFRAME":
-                        case "PUSHFRAME":
-                        case "POPFRAME":
-                        case "RETURN":
-                        case "BREAK":
-                                $xml->createInstruction($lineNumber, $instruction, []);
-                                break;
-
-                        case "LABEL":
-                        case "JUMP":
-                                $argument = new Argument("label", $arguments[0]);
-                                $xml->createInstruction($lineNumber, $instruction, [$argument]);
-                                break;
-                                #case "JUMPIFEQ":
-                                #case "JUMPIFNEQ":
-                        case "READ":
-                          $argument = new Argument("var", $arguments[0]);
-                          $argument1 = new Argument("type", $arguments[1]);
-                          $xml->createInstruction($lineNumber, $instruction, [$argument, $argument1]);
-                          break;
-
-
-                        default:
-                                $argumentList = array();
-                                foreach ($arguments as $argument) {
-                                        #echo "***creating argument with: " . $argument . " ***\n";
-                                        $currentArgument = $parser->createArgument($argument);
-                                        array_push($argumentList, $currentArgument);
-                                }
-                                $xml->createInstruction($lineNumber, $instruction, $argumentList);
-                                break;
-                }
-        }
-        $lineNumber++;
+            $lineNumber++;
+    }
+    $xml->endTag("program");
+    exit(0);
+  } 
 }
-$xml->endTag("program");
-exit(0);
 
+$main = new Main();
+$main->Program();
 
-
-
-
-
-
-/*
-plan
-1. parse input into lines - done
-2. remove comments from lines - done
-3. remove empty lines - done
-4. check if line has valid instruction (valid OP code should be  the first string)
-5. check if the instruction has valid number of arguments
-5. check if the line makes sense in terms of syntax (undefined variable, redefined variable, scope etc)
-6. if line is valid, add it to the output xml, go back to 4.
-*/
 ?>
