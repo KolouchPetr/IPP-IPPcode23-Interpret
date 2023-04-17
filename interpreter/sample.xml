@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<program language="IPPcode23">
+        <instruction opcode="CREATEFRAME" order="1"/>
+        <instruction opcode="PUSHFRAME" order="2"/>
+        <instruction opcode="DEFVAR" order="3">
+                <arg1 type="var">LF@var</arg1>
+        </instruction>
+        <instruction opcode="MOVE" order="4">
+                <arg1 type="var">LF@var</arg1>
+                <arg2 type="int">1</arg2>
+        </instruction>
+        <instruction opcode="LABEL" order="5">
+                <arg1 type="label">cycle</arg1>
+        </instruction>
+        <instruction opcode="CALL" order="6">
+                <arg1 type="label">main</arg1>
+        </instruction>
+        <instruction opcode="WRITE" order="7">
+                <arg1 type="var">LF@var</arg1>
+        </instruction>
+        <instruction opcode="MOVE" order="8">
+                <arg1 type="var">LF@var</arg1>
+                <arg2 type="var">TF@var</arg2>
+        </instruction>
+        <instruction opcode="WRITE" order="9">
+                <arg1 type="var">LF@var</arg1>
+        </instruction>
+        <instruction opcode="JUMPIFNEQ" order="10">
+                <arg1 type="label">cycle</arg1>
+                <arg2 type="var">LF@var</arg2>
+                <arg3 type="int">10</arg3>
+        </instruction>
+        <instruction opcode="EXIT" order="11">
+                <arg1 type="int">0</arg1>
+        </instruction>
+        <instruction opcode="LABEL" order="12">
+                <arg1 type="label">main</arg1>
+        </instruction>
+        <instruction opcode="CREATEFRAME" order="13"/>
+        <instruction opcode="PUSHFRAME" order="14"/>
+        <instruction opcode="DEFVAR" order="15">
+                <arg1 type="var">LF@var</arg1>
+        </instruction>
+        <instruction opcode="ADD" order="16">
+                <arg1 type="var">LF@var</arg1>
+                <arg2 type="int">9</arg2>
+                <arg3 type="int">1</arg3>
+        </instruction>
+        <instruction opcode="POPFRAME" order="17"/>
+        <instruction opcode="RETURN" order="18"/>
+</program>
+

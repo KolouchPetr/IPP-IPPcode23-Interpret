@@ -41,18 +41,39 @@ $instructions = array(
 );
 
 class Parser
-{
+{       
+        /**
+         * @brief načítá standardní vstup
+         * @return standardní vstup
+         * 
+         * */
         public function readSTDIN()
         {
                 $input_data = file_get_contents("php://stdin");
                 return $input_data;
         }
 
+        /**
+         * @brief tiskne zprávu s návodem na používání scriptu
+         *
+         * */
+
+        public function printHelp() {
+            echo "  Program parse.php slouží pro vytvoření XML souboru platného IPPcode23 kódu.
+        Zdrojový kód je načítán ze standardního vstupu stdin.
+        Spusťte program pomocí příkazu php parse.php, napište program do stdin a pomocí <ctrl+d> ukončete vstup
+        nebo přesměrujte obsah souboru s kódem na stdin způsobem: php parse.php < zdroj.IPPcode23";
+  }
+        
+        /**
+         * @brief kontroluje počet argumentů na vstupu
+         *
+         * */
         public function checkArgs() {
         global $argc, $argv;
         if ($argc == 2) {
           if (!strcmp($argv[1], "--help") || !strcmp($argv[1], "-help")) {
-                  printHelp();
+                  $this->printHelp();
                   exit(0);
           } else {
                   echo "použijte -help or --help pro zobrazení nápovědy";
@@ -61,8 +82,15 @@ class Parser
           }
         }
 
+        /**
+         * @brief odstraňuje komentáře a prázdné řádky ze vstupu
+         * @return zpracovaný vstup
+         *
+         *
+         * */
+
         public function parseInputLines() {
-        
+
         $input_data = $this->readSTDIN();
         $lines = explode("\n", $input_data);
 
@@ -74,12 +102,26 @@ class Parser
         return $noBlankLines;
         }
 
+        /**
+         *  @brief vrací instrukci na řádku
+         *  @param line řádek vstupu
+         *  @return název instrukce
+         *
+         * */
+
         public function getInstructionFromLine($line)
         {
                 $instruction = explode(' ', trim($line))[0];
                 return $instruction;
         }
 
+
+        /**
+         * @brief vrací argumenty instrukce na daném řádku a kontroluje správný počet
+         * @param line řádek vstupu
+         * @return seznam argumentů
+         *
+         * */
         public function  getArgumentsFromLine($line)
         {
                 $argumentsString = substr(strstr($line, " "), 1);
@@ -94,7 +136,12 @@ class Parser
                 }
                 return $arguments;
         }
-
+        
+        /**
+         * @brief kontroluje existenci hlavičky
+         * @param řádek vstupu
+         *
+         * */
         public function checkHeader($line)
         {
                 if (strcmp(strtolower($line), strtolower(".IPPcode23"))) {
@@ -102,6 +149,13 @@ class Parser
                         exit(21);
                 }
         }
+
+        /**
+         *  @brief vytvaří objekt třídy argument dle jeho typu
+         *  @param argument argument vstupního řádku
+         *  @return objekt třídy argument
+         *
+         * */
 
         public function createArgument($argument)
         {
@@ -163,11 +217,22 @@ class XML
        const XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
        const XMLPROGRAMSTART = "<program language=\"IPPcode23\">";
 
+        /**
+         * @brief tiskne hlavičku výstupního XML
+         *
+         * */
         public function printProgramStart() {
           echo self::XMLHEADER . "\n";
           echo self::XMLPROGRAMSTART . "\n";
         }
 
+       /**
+        * @brief tiskne XML tag instrukce s jejími argumenty
+        * @param tagName název tagu dle instrukce
+        * @param args seznam argumentů tagu
+        * @param value hodnota tagu
+        *
+        * */
         public function createTag($tagName, $args, $value)
         {
                 $tag = "<" . $tagName . " ";
@@ -179,11 +244,25 @@ class XML
                 echo $tag;
         }
 
+        /**
+         *  @brief tiskne konec tagu
+         *  @param tagName název tagu
+         *
+         */
+
         public function endTag($tagName)
         {
                 $tag = "</" . $tagName . ">";
                 echo $tag . "\n";
         }
+
+        /**
+         * @brief tiskne kompletní tag instrukce na výstup
+         * @param order číslo dané instrukce
+         * @param opcode operační kód
+         * @param args seznam argumentů
+         *
+         * */
 
         public function createInstruction($order, $opcode, $args)
         {
@@ -210,6 +289,12 @@ class XML
 }
 
 class SyntaxAnalysis {
+  /**
+   * @brief kontroluje správnost typů argumentů dané instrukce
+   * @param instruction instrukce
+   * @param arguments seznam argumentů instrukce
+   *
+   * */
   public function checkInstructionArgumentTypes($instruction, $arguments) {
     global $instructions;
     if($instruction == "NOT" && count($arguments) == 2) {
@@ -228,6 +313,13 @@ class SyntaxAnalysis {
     }
   }
 
+  /**
+   *  @brief kontroluje zda hodnota argumenty odpovídá jeho typu
+   *  @param argument argument
+   *  @param type datový typ argumentu
+   *
+   * */
+
   public function checkType($argument, $type) {
           switch($type) {
             case "var":
@@ -236,7 +328,7 @@ class SyntaxAnalysis {
             case "symb":
               return (preg_match("/^int[@][+-]?((0x[\da-fA-F]+)|([0-7]+)|(\d+))$/", $argument) ||
                 preg_match("/(true|false)/", $argument)      ||
-                preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))*(?:[^\\\\\p{Z}\p{Cc}]|$)/", $argument) || !strcmp("string@", $argument) || 
+                preg_match("/string@(?:[^\p{Z}\p{Cc}#\\\\]|\\\\(?:[0-2][0-9][0-9]|[0-9]{2}|035|092))*(?:[^\\\\\p{Z}\p{Cc}]|$)/", $argument) || !strcmp("string@", $argument) ||
                 !strcmp("nil@nil", $argument) ||
                 preg_match("/^(GF|TF|LF)@[a-zA-Z_\$&%*!?][\w\$&%*!?-]*$/", $argument));
               break;
@@ -248,6 +340,12 @@ class SyntaxAnalysis {
               break;
           }
   }
+
+  /**
+   * @brief kontroluje existenci instrukce v instrukční sadě
+   * @param instruction instrukce
+   *
+   * */
   public function instructionExists($instruction) {
     global $instructions;
     if (!array_key_exists($instruction, $instructions)) {
@@ -255,6 +353,14 @@ class SyntaxAnalysis {
       exit(22);
     }
   }
+
+  /**
+   * @brief kontroluje počet argumentů instrukce
+   * @param instruction instrukce
+   * @param arguments seznam argumentů
+   *
+   *
+   * */
 
   public function checkArgumentCount($instruction, $arguments) {
     global $instructions;
@@ -273,13 +379,12 @@ class SyntaxAnalysis {
 }
 
 class Main {
-  public function printHelp() {
-    echo "  Program parse.php slouží pro vytvoření XML souboru platného IPPcode23 kódu.
-    Zdrojový kód je načítán ze standardního vstupu stdin. 
-    Spusťte program pomocí příkazu php parse.php, napište program do stdin a pomocí <ctrl+d> ukončete vstup
-    nebo přesměrujte obsah souboru s kódem na stdin způsobem: php parse.php < zdroj.IPPcode23";
-  }
 
+  /**
+   * @brief spouští jednotlivé funkce a organizuje funkčnost celého programu
+   *
+   *
+   * */
   public function Program() {
     global $instructions;
     $parser = new Parser();
@@ -349,7 +454,7 @@ class Main {
     }
     $xml->endTag("program");
     exit(0);
-  } 
+  }
 }
 
 $main = new Main();
