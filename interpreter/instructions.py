@@ -5,18 +5,12 @@ import sys
 import copy
 
 
-def checkArgumentCount(argTypes, arguments, class_name):
-    expectedArgLen = len(argTypes)
-    argLen = len(arguments)
-    if expectedArgLen != argLen:
-        raise ValueError(
-            f"[Chyba] instrukce {class_name} ocekavala {expectedArgLen}, ale dostala {argLen} argumentu!"
-        )
-
-
+# @brief Třída instrukce představuje implementaci instrukcí a metod s nimi spojených
 class Instructions:
     def __init__(self, program):
+        # odkaz na instanci třídy program
         self.program = program
+        # slovník typů, který slouží pro kontrolu pro instrukce definované klíčem
         self.types = {
             "MOVE": ["var", "symb"],
             "POPS": ["var"],
@@ -40,6 +34,10 @@ class Instructions:
             "READ": ["var", "type"],
         }
 
+    # @brief metoda kontroluje, zda typy argumentů instrukce odpovídají
+    # očekávaným typům
+    # @param instruction název instrukce
+    # @param args argumenty instrukce
     def checkTypes(self, instruction, args):
         types = self.types[instruction]
         for i in range(len(types)):
@@ -72,6 +70,10 @@ class Instructions:
                     )
                     exit(53)
 
+    # @brief metoda slouží pro snažší získávání specifických hodnot z argumentu
+    # v případě, že argument představuje proměnnou, hodnota se získává až z ní
+    # @param arg argument, ze kterého chceme získat hodnotu
+    # @param value parametr, respektive hodnota, kterou chceme získat
     def getValue(self, arg, value):
         if arg.get("type") == "var":
             variable = self.program.get_variable(arg)
@@ -85,6 +87,8 @@ class Instructions:
             return value
         return arg.get(value)
 
+    # @brief metoda kontroluje správnost typů a hodnot pro aritmetické instrukce
+    # @param args argumenty aritmetické instrukce
     def checkNumericValues(self, args):
         arg1Type = self.getValue(args[1], "type")
         arg2Type = self.getValue(args[2], "type")
@@ -100,6 +104,8 @@ class Instructions:
 
         return
 
+    # @brief metoda kontroluje, zda jsou typy porovnatelné pro porovnávací instrukce
+    # @param args argumenty relační instrukce
     def checkRelationValues(self, args):
         validTypes = ["int", "bool", "string"]
         arg1Type = self.getValue(args[1], "type")
@@ -115,6 +121,8 @@ class Instructions:
             print("[chyba] nevalidní typ argumentu relační instrukce", file=sys.stderr)
             exit(53)
 
+    # @brief metoda zjišťuje, zda je hodnota validní číslo
+    # @param n číslo pro kontrolu
     def isNumber(self, n):
         try:
             float(n)
@@ -123,37 +131,52 @@ class Instructions:
             print("[chyba] neplatné číslo v aritmetické instrukci", file=sys.stderr)
             exit(32)
 
+    # @brief metoda instrukce MOVE
+    # nastaví hodnotu proměnné dle argumentů instrukce
+    # @param args argumenty instrukce
     def MOVE(self, args):
         self.checkTypes("MOVE", args)
         value = self.getValue(args[1], "value")
         type_t = self.getValue(args[1], "type")
         self.program.set_variable(args[0], value, type_t=type_t)
 
+    # @brief metoda instrukce CREATEFRAME
+    # vytvoří dočasný rámec
+    # @param argumenty instrukce
     def CREATEFRAME(self, args):
-        self.program.tempFrame = Frame()
+        self.program.setTempFrame(Frame())
 
+    # @brief metoda instrukce PUSHFRAME 
+    # Přesune dočasný rámec na vrchol lokálního rámce
+    # @param argumenty instrukce
     def PUSHFRAME(self, args):
-        if self.program.tempFrame == None:
+        if self.program.getTempFrame() == None:
             print(f"[chyba] přístup k neexistujícímu rámci", file=sys.stderr)
             exit(55)
 
-        if self.program.localFrames == None:
-            self.program.localFrames = Stack()
+        if self.program.getLocalFrames() == None:
+            self.program.setLocalFrames(Stack())
 
         frameCopy = copy.copy(self.program.tempFrame)
-        self.program.localFrames.push(frameCopy)
-        self.program.tempFrame = None
+        self.program.getLocalFrames().push(frameCopy)
+        self.program.setTempFrame(None)
 
+    # @brief metoda instrukce POPFRAME 
+    # Přesune rámec z vrcholu lokálního rámce do dočasného rámce
+    # @param argumenty instrukce 
     def POPFRAME(self, args):
-        if self.program.localFrames == None:
+        if self.program.getLocalFrames() == None:
             print("[chyba] přístup k neexistujícímu rámci", file=sys.stderr)
             exit(55)
-        if self.program.localFrames.length() == 0:
+        if self.program.getLocalFrames().length() == 0:
             print(f"[chyba] lokální rámec je prázdný", file=sys.stderr)
             exit(55)
-        newTempFrame = self.program.localFrames.pop()
-        self.program.tempFrame = newTempFrame
+        newTempFrame = self.program.getLocalFrames().pop()
+        self.program.setTempFrame(newTempFrame)
 
+    # @brief metoda instrukce DEFVAR 
+    # definuje existenci proměnné v příslušném rámci
+    # @param argumenty instrukce
     def DEFVAR(self, args):
         frame = args[0].get("frame")
         if frame == "GF":
@@ -165,9 +188,9 @@ class Instructions:
                 exit(52)
             self.program.set_variable(args[0], "")
         elif frame == "LF":
-            if self.program.localFrames == None:
-                self.program.localFrames = Stack()
-            if self.program.localFrames.get_variable_from_last_frame(
+            if self.program.getLocalFrames() == None:
+                self.program.setLocalFrame(Stack())
+            if self.program.getLocalFrames().get_variable_from_last_frame(
                 args[0].get("value") != None
             ):
                 print(
@@ -175,14 +198,14 @@ class Instructions:
                     file=sys.stderr,
                 )
                 exit(52)
-            self.program.localFrames.set_variable_from_last_frame(
+            self.program.getLocalFrames().set_variable_from_last_frame(
                 args[0].get("value"), ""
             )
         elif frame == "TF":
-            if self.program.tempFrame == None:
+            if self.program.getTempFrame() == None:
                 print("[chyba] dočasný rámec nebyl vytvořen", file=sys.stderr)
                 exit(55)
-            if self.program.tempFrame.get_variable(args[0].get("value")) != None:
+            if self.program.getTempFrame().get_variable(args[0].get("value")) != None:
                 print(
                     f'[chyba] proměnná {args[0].get("value")} je již definována',
                     file=sys.stderr,
@@ -190,25 +213,40 @@ class Instructions:
                 exit(52)
             self.program.set_variable(args[0], "")
 
+    # @brief metoda instrukce CALL 
+    # uloží hodnotu programového čítače do programového zásobníku
+    # a nastaví ho na hodnotu dle volané funkce
+    # @param argumenty instrukce
     def CALL(self, args):
         self.program.pushProgramStack(self.program.getProgramCounter() + 1)
         label = self.program.labelExists(args[0].get("value"))
         self.program.setProgramCounter(int(label.get("order")) - 1)
 
+    # @brief metoda instrukce RETURN 
+    # Návrat z volané funkce, nastaví programový čítač na hodnotu v zásobíku volání
     def RETURN(self, args):
         self.program.setProgramCounter(self.program.popProgramStack())
 
+    # @brief metoda instrukce PUSHS 
+    # Vloží hodnotu na vrchol datového zásobníku
+    # @param argumenty instrukce
     def PUSHS(self, args):
-        self.program.dataStack.push(self.getValue(args[0], "value"))
+        self.program.getDataStack().push(self.getValue(args[0], "value"))
 
+    # @brief metoda instrukce POPS 
+    # Přesune hodnotu z vrcholu datového zásobníku do proměnné
+    # @param argumenty instrukce
     def POPS(self, args):
         self.checkTypes("POPS", args)
-        if self.program.dataStack.isEmpty():
+        if self.program.getDataStack().isEmpty():
             print(f"[chyba] datový zásobník je prázdný", file=sys.stderr)
             exit(56)
-        value = self.program.dataStack.pop()
+        value = self.program.getDataStack().pop()
         self.program.set_variable(args[0], value)
 
+    # @brief metoda instrukce ADD 
+    # aritmetický součet hodnot a uložení hodnoty do proměnné
+    # @param argumenty instrukce
     def ADD(self, args):
         self.checkTypes("ADD", args)
         self.checkNumericValues(args)
@@ -219,6 +257,9 @@ class Instructions:
         )
         self.program.set_variable(args[0], addedValue)
 
+    # @brief metoda instrukce SUB 
+    # aritmetické odčtání hodnot a uložení hodnoty do proměnné
+    # @param argumenty instrukce
     def SUB(self, args):
         self.checkTypes("SUB", args)
         self.checkNumericValues(args)
@@ -229,6 +270,9 @@ class Instructions:
         )
         self.program.set_variable(args[0], subbedValue)
 
+    # @brief metoda instrukce MUL 
+    # aritmetický součin hodnot a uložení hodnoty do proměnné
+    # @param argumenty instrukce
     def MUL(self, args):
         self.checkTypes("MUL", args)
         self.checkNumericValues(args)
@@ -239,6 +283,9 @@ class Instructions:
         )
         self.program.set_variable(args[0], mulledValue)
 
+    # @brief metoda instrukce IDIV 
+    # aritmetické dělení hodnot a uložení hodnoty do proměnné
+    # @param argumenty instrukce
     def IDIV(self, args):
         self.checkTypes("IDIV", args)
         self.checkNumericValues(args)
@@ -252,6 +299,9 @@ class Instructions:
         )
         self.program.set_variable(args[0], divedValue)
 
+    # @brief metoda instrukce LT 
+    # relační porovnání menší než
+    # @param argumenty instrukce
     def LT(self, args):
         self.checkTypes("LT", args)
         self.checkRelationValues(args)
@@ -260,6 +310,9 @@ class Instructions:
         else:
             self.program.set_variable(args[0], False)
 
+    # @brief metoda instrukce GT 
+    # relační porovnání větší než
+    # @param argumenty instrukce
     def GT(self, args):
         self.checkTypes("GT", args)
         self.checkRelationValues(args)
@@ -268,6 +321,9 @@ class Instructions:
         else:
             self.program.set_variable(args[0], False)
 
+    # @brief metoda instrukce EQ 
+    # relační porovnání je rovno
+    # @param argumenty instrukce
     def EQ(self, args):
         self.checkTypes("EQ", args)
         self.checkRelationValues(args)
@@ -276,6 +332,9 @@ class Instructions:
         else:
             self.program.set_variable(args[0], False)
 
+    # @brief metoda instrukce AND 
+    # Logická funkce AND, zkoumá pravdivost obou argumentů
+    # @param argumenty instrukce
     def AND(self, args):
         self.checkTypes("AND", args)
         if self.getValue(args[1], "value") and self.getValue(args[2], "value"):
@@ -283,6 +342,9 @@ class Instructions:
         else:
             self.program.set_variable(args[0], False)
 
+    # @brief metoda instrukce OR 
+    # Logická funkce OR, zkoumá pravdivost alespoň jednoho argumentu
+    # @param argumenty instrukce
     def OR(self, args):
         self.checkTypes("OR", args)
         if self.getValue(args[1], "value") or self.getValue(args[2], "value"):
@@ -290,19 +352,28 @@ class Instructions:
         else:
             self.program.set_variable(args[0], False)
 
+    # @brief metoda instrukce NOT 
+    # Logická funkce NOT, neguje hodnotu argumentu
+    # @param argumenty instrukce
     def NOT(self, args):
         self.checkTypes("NOT", args)
         self.program.set_variable(args[0], not self.getValue(args[1], "value"))
 
+    # @brief metoda instrukce INT2CHAR 
+    # převádí číselnou hodnotu na znak
+    # @param argumenty instrukce
     def INT2CHAR(self, args):
         self.checkTypes("INT2CHAR", args)
         value = self.getValue(args[1], "value")
         if not (isinstance(value, str) or value.isascii):
             print("[chyba] znak není validní ordinální znak")
             exit(58)
-
+        #TODO: cast to string
         self.program.set_variable(args[0], chr(int(value)))
 
+    # @brief metoda instrukce STRI2INT 
+    # Převádí řetězec na číselnou hodnotu
+    # @param argumenty instrukce
     def STRI2INT(self, args):
         self.checkTypes("STRI2INT", args)
         index = int(self.getValue(args[2], "value"))
@@ -315,6 +386,9 @@ class Instructions:
             int((string[index])),
         )
 
+    # @brief metoda instrukce READ 
+    # čte hodnotu uživatele ze standardního stupu
+    # @param argumenty instrukce
     def READ(self, args):
         self.checkTypes("READ", args)
         userInput = input()
@@ -336,6 +410,9 @@ class Instructions:
 
         self.program.set_variable(args[0], userInput, type_t=type_t)
 
+    # @brief metoda instrukce WRITE 
+    # Výpis hodnoty na standardní výstup
+    # @param argumenty instrukce
     def WRITE(self, args):
         output = str(self.getValue(args[0], "value"))
         type_t = self.getValue(args[0], "type")
@@ -350,16 +427,25 @@ class Instructions:
         else:
             print(output, end="")
 
+    # @brief metoda instrukce CONCAT 
+    # Spojení neboli konkantenace hodnot řetězců
+    # @param argumenty instrukce
     def CONCAT(self, args):
         self.checkTypes("CONCAT", args)
         self.program.set_variable(
             args[0], self.getValue(args[1], "value") + self.getValue(args[2], "value")
         )
 
+    # @brief metoda instrukce STRLEN 
+    # Uloží délku řetězce do proměnné
+    # @param argumenty instrukce
     def STRLEN(self, args):
         self.checkTypes("STRLEN", args)
         self.program.set_variable(args[0], len(self.getValue(args[1], "value")))
 
+    # @brief metoda instrukce GETCHAR 
+    # Zisk hodnoty znaku z řetězce a jeho uložení do proměnné
+    # @param argumenty instrukce
     def GETCHAR(self, args):
         self.checkTypes("GETCHAR", args)
         index = int(self.getValue(args[2], "value"))
@@ -372,6 +458,9 @@ class Instructions:
             exit(54)
         self.program.set_variable(args[0], string[index])
 
+    # @brief metoda instrukce SETCHAR 
+    # Nastavení hodnoty znaku v řětězci na určité pozici
+    # @param argumenty instrukce
     def SETCHAR(self, args):
         self.checkTypes("SETCHAR", args)
         index = int(self.getValue(args[1], "value"))
@@ -383,6 +472,9 @@ class Instructions:
         string[index] = newChar
         self.program.set_variable(args[0], string)
 
+    # @brief metoda instrukce TYPE 
+    # Nastavení hodnoty proměnné dle typu
+    # @param argumenty instrukce
     def TYPE(self, args):
         self.checkTypes("TYPE", args)
         value = self.getValue(args[1], "value")
@@ -399,10 +491,16 @@ class Instructions:
         else:
             self.program.set_variable(var, "string")
 
+    # @brief metoda instrukce JUMP 
+    # Skok na návěští = nastavení programového čítače na jeho hodnotu
+    # @param argumenty instrukce
     def JUMP(self, args):
         label = self.program.labelExists(args[0].get("value"))
         self.program.setProgramCounter(int(label.get("order")) - 1)
 
+    # @brief metoda instrukce JUMPIFEQ
+    # Skok na návěští v případě ekvivalence hodnot
+    # @param argumenty instrukce
     def JUMPIFEQ(self, args):
         arg1Type = self.getValue(args[1], "type")
         arg2Type = self.getValue(args[2], "type")
@@ -420,6 +518,9 @@ class Instructions:
             print("[chyba] neplatné typy argumentů v podmínce", file=sys.stderr)
             exit(53)
 
+    # @brief metoda instrukce JUMPIFNEQ
+    # Skok na návěští v případě nonekvivalence hodnot
+    # @param argumenty instrukce
     def JUMPIFNEQ(self, args):
         arg1Type = self.getValue(args[1], "type")
         arg2Type = self.getValue(args[2], "type")
@@ -433,6 +534,9 @@ class Instructions:
             print("[chyba] neplatné typy argumentů v podmínce", file=sys.stderr)
             exit(53)
 
+    # @brief metoda instrukce EXIT
+    # Ukončení programu se specifickou návratovou hodnotou
+    # @param argumenty instrukce
     def EXIT(self, args):
         arg0Value = self.getValue(args[0], "value")
         arg0Type = self.getValue(args[0], "type")
@@ -444,9 +548,15 @@ class Instructions:
             exit(57)
         exit(int(arg0Value))
 
+    # @brief metoda instrukce DPRINT
+    # Ladící výstup hodnoty proměnné na standardní chybový výstup
+    # @param argumenty instrukce
     def DPRINT(self, args):
         print(self.getValue(args[0], "value"), file=sys.stderr)
 
+    # @brief metoda instrukce BREAK
+    # Ladící výpis informací programu
+    # @param argumenty instrukce
     def BREAK(self, args):
         programCounter = self.program.getProgramCounter()
         globalFrame = self.program.getGlobalFrame()
@@ -458,13 +568,21 @@ class Instructions:
             file=sys.stderr,
         )
 
+    # @brief metoda instrukce LABEL
+    # Implemetace již v XMLParser, zde slouží k potlačení chyby existence
+    # @param argumenty instrukce
     def LABEL(self, args):
         pass
 
-
+# @brief metoda zavolá příslušnou metodu dle názvu instrukce
+# @param instruction název volané instrukce
+# @param args argumenty instrukce
+# @param program odkaz na instanci třídy program
 def execute_instruction(instruction, args, program):
     instructions = Instructions(program)
     method_name = instruction.upper()
+    # existuje li metoda s názvem volané instrukce, zavolá se
+    # v opačném případě je volaná neexistující instrukce a dochází k běhové chybě
     method = getattr(instructions, method_name, None)
     if method:
         try:
